@@ -11,22 +11,31 @@ this can be used AS-IS with very few changes if you are not comforatble with scr
 will have to set the following variables specific to your environment:
 
 variables related to when the app should run:
+
     iDayStart = set to 1 hour before you want notifications to start
+
     iDayEnd = set to 1 hour after you want notifications to stop
+
     iWeekday = leave this alone if you want it to run M-F, if you want 
         it to run EVERYDAY, just change the whole thing to "Let iWeekday = 1"
+
     iRuntime = leave this alone if you want the app to only notify 
         using the above parameters, to make it ALWAYS run, change 
         it to Let iRuntime = 'yes'
 
+
 Environment Based Variables
     pLib = the name of the data connection you created
+
     WebHookAddress = the complete wqebhook address given 
         to you by teams during setup
+
     iEnvironment = set up your own logic to determine which environment
         the app is running in. if all of your nodes are named using a
         consistent naming convention, this is easier
+
     iColor = hex color values for the different outputs of iEnvironment
+    
 
 The app only reviews failures on the cluster in which it runs. if
 you have multiple clusters, the app needs to be loaded on each one
