@@ -50,3 +50,7 @@ Instructions for setup:
 
 4. App(s) - create an app in each environment that uses the completed 
     script.  schedule the app to run at whatever cadence works for you.
+
+
+Happy Notifying!!!
+-joe easley-
