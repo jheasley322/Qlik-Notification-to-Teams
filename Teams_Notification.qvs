@@ -235,23 +235,23 @@ ELSE                                                                            
         //===================================================================================================================================================================
         //----->>  ----->>  ----->>  ----->>  ----->>  ----->>  ----->>  ----->>                   do not change anything that is CONFIG
         
-        LET Payload2='{';                                                                           //****************part of CONFIG
-        LET Payload2= Payload2 &'"@type": "MessageCard",';                                          //****************type of alert (CONFIG)
-        LET Payload2= Payload2 &'"@context": "http://schema.org/extensions",';                      //****************schema to use (CONFIG)
-        LET Payload2= Payload2 &'"summary": "Qlik Alert",';                                         //alert summary
-        LET Payload2= Payload2 &'"title": "'& '$(CardTitle)' &'",';                                 //main title
-        LET Payload2= Payload2 &'"text": "Alert Message from $(server)",';                          //server identification
-        LET Payload2= Payload2 &'"themeColor": "'& '$(CardColor)' &'",';                            //color
-        LET Payload2= Payload2 &'"sections": [';                                                    //****************part of CONFIG
-        LET Payload2= Payload2 &'{';                                                                //****************part of CONFIG
-        LET Payload2= Payload2 &'"title": "'& '$(CardSubTitle)' &'",';                              //sub title
-        LET Payload2= Payload2 &'"text": "'&'<blockquote>'& '$(CardMessage)' &'</blockquote>'&'",'; //card message
-        LET Payload2= Payload2 &'}';                                                                //****************part of CONFIG
-        LET Payload2= Payload2 &']';                                                                //****************part of CONFIG
-        LET Payload2= Payload2 &'}';                                                                //****************part of CONFIG
+        LET Jpayload ='{';                                                                           //****************part of CONFIG
+        LET Jpayload = Jpayload &'"@type": "MessageCard",';                                          //****************type of alert (CONFIG)
+        LET Jpayload = Jpayload &'"@context": "http://schema.org/extensions",';                      //****************schema to use (CONFIG)
+        LET Jpayload = Jpayload &'"summary": "Qlik Alert",';                                         //alert summary
+        LET Jpayload = Jpayload &'"title": "'& '$(CardTitle)' &'",';                                 //main title
+        LET Jpayload = Jpayload &'"text": "Alert Message from $(server)",';                          //server identification
+        LET Jpayload = Jpayload &'"themeColor": "'& '$(CardColor)' &'",';                            //color
+        LET Jpayload = Jpayload &'"sections": [';                                                    //****************part of CONFIG
+        LET Jpayload = Jpayload &'{';                                                                //****************part of CONFIG
+        LET Jpayload = Jpayload &'"title": "'& '$(CardSubTitle)' &'",';                              //sub title
+        LET Jpayload = Jpayload &'"text": "'&'<blockquote>'& '$(CardMessage)' &'</blockquote>'&'",'; //card message
+        LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
+        LET Jpayload = Jpayload &']';                                                                //****************part of CONFIG
+        LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
 
         //====================================================================================================================================================================
-        LET Payload2 = REPLACE(Payload2,'"', CHR(34)&CHR(34));                                      //text replace to finalize formatting
+        LET Jpayload = REPLACE(Jpayload,'"', CHR(34)&CHR(34));                                      //text replace to finalize formatting
 
         LIB CONNECT TO '$(pLib)';                                                                   //connect to the library connection
         
@@ -265,7 +265,7 @@ ELSE                                                                            
             WITH CONNECTION (                                                                       // this sends the payload back through the REST connection
                 URL "$(WebhookAddress)",  
                 HTTPHEADER "Content-Type" "application/json",
-                BODY "$(Payload2)" ) 
+                BODY "$(Jpayload)" ) 
         ;
         Drop Table Tasks;                                                                           // get rid of task table
         END IF;                                                                                     // finishes payload composition, no ELSE to handle when there are 0 failures
