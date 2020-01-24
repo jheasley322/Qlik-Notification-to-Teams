@@ -33,7 +33,7 @@ Let iNow = hour(Now());
 Let iDayStart =     6;                                                                          // set the minimum hour to send notices -1 (6 = start notifications at 7am)
 Let iDayEnd =       21;                                                                         // set the maxmimum hour to send notices +1 (21 = stop notifications at 8pm)
 let iDaytime =      if($(iNow)>$(iDayStart) AND $(iNow)<$(iDayEnd),1,0);                        // flags whether or not the time is "daytime" based on your start/stop hours
-Let iWeekday =      if(Match(WeekDay(today(),),'Sat','Sun'),0,1);  
+Let iWeekday =      if(Match(WeekDay(today()),'Sat','Sun'),0,1);  
 // Let iWeekday =      1;                             // flags whether or not the day is a weekday or weekend based on the execution time of the app
 Let iRuntime =      If($(iWeekday)=1 AND $(iDaytime)=1,'yes','no');                             // flags whether or not notifications should be sent based on IS DAYTIME AND IS WEEKDAY
 // Let iRuntime = 'yes'; use this as a manual 
@@ -179,6 +179,8 @@ ELSE                                                                            
                 ))))    AS StatusName,
             [startTime] AS [startTime],
             [stopTime] AS [stopTime],
+            Date(ConvertToLocalTime([stopTime],'Eastern Time (US & Canada)')) as SDate,
+            time(ConvertToLocalTime([stopTime],'Eastern Time (US & Canada)')) as STime,  
             [duration] AS [duration],
             [__KEY_lastExecutionResult] AS [__KEY_lastExecutionResult]  
         RESIDENT RestConnectorMasterTable
@@ -204,12 +206,13 @@ ELSE                                                                            
             Concat(
                 [Task Name] & ': '& 
                 StatusName & ' - ' &
-                stopTime,
+                Date(SDate,'M/D/YY') &' '&
+                Time(STime,'h:mmtt'),
                     ' <br> ') as list
         Resident Tasks Group by 1;
 
         Let vAllFails = peek('list');
-        Trace Fail list is: vAllFails;
+        Trace Fail list is: $(vAllFails);
 
         Drop Table TaskList;
         // drops the original TaskList and keeps only the failed tasks
