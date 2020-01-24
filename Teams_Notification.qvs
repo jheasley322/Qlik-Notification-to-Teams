@@ -172,6 +172,11 @@ ELSE                                                                            
             [__FK_lastExecutionResult] AS [__KEY_operational],
             [executingNodeName] AS [executingNodeName],
             [status] AS [status],
+            if match(status,8,'FinishedFail',
+                if match(status,10,'Retry',
+                if match(status,11,'Error',
+                if match(status,12,'Reset'
+                ))))    AS StatusName,
             [startTime] AS [startTime],
             [stopTime] AS [stopTime],
             [duration] AS [duration],
@@ -196,7 +201,11 @@ ELSE                                                                            
 
         List:
         Load
-            Concat([Task Name],' <br> ') as list
+            Concat(
+                [Task Name] & ': '& 
+                StatusName & ' - ' &
+                stopTime,
+                    ' <br> ') as list
         Resident Tasks Group by 1;
 
         Let vAllFails = peek('list');
@@ -276,4 +285,4 @@ ELSE                                                                            
     Call Fails;
     CALL Notification;
 
-END IF;                                   
+END IF; 
