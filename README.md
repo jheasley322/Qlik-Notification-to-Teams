@@ -36,6 +36,8 @@ Environment Based Variables
 
     iColor = hex color values for the different outputs of iEnvironment
     
+    qmc = this is a variable that will pass a link to the QMC tasks page into your notification.
+        update the variable text to include your domain in order to pass a functioning link.
 
 The app only reviews failures on the cluster in which it runs. if
 you have multiple clusters, the app needs to be loaded on each one

@@ -55,7 +55,9 @@ ELSE                                                                            
     Let pLib = 'your data connection name here';                                                                     // set the LIB connection name
                                                                                                 // below is the webhook address from teams
     Let WebhookAddress = 'your webhook address here';
-    Let server = ComputerName();                                                                // sets the server name as a variable
+    Let server = ComputerName(); 
+    //update your doamin info here to make this function correctly   
+    let qmc = lower('https://$(server).[YOUR-DOMAIN-HERE].com/qmc/tasks')                         // sets the server name as a variable
 
     Sub CurrentTasks
         //this sub uses the monitoring API to go get all tasks that are on the task list and their current status, as well as some minor header details
@@ -229,7 +231,8 @@ ELSE                                                                            
         IF  $(vFailCount) > 0 THEN                                                                  // if there are more than 0 failures, set the main card details as this
             LET CardMessage = 'There are ' & $(vFailCount) 
                 &' tasks currently in a failed status ('& NOW()&')'&
-                '<br>'&' List of Failed Tasks: <br>'& '$(vAllFails)';                               // card message
+                '<br>'&' List of Failed Tasks: <br>'& '$(vAllFails)'
+                & '<br>' & '<br>' & '$(qmc)';                                                       // card message
             LET CardColor = '$(iColor)';                                                            // card color
             LET CardSubTitle          = 'Task Failure Alert';                                       // sub title
         //-------------------------------------------------------------------------this block is not currently in use-----------------------------------
