@@ -57,7 +57,7 @@ ELSE                                                                            
     Let WebhookAddress = 'your webhook address here';
     Let server = ComputerName(); 
     //update your doamin info here to make this function correctly   
-    let qmc = lower('https://$(server).[YOUR-DOMAIN-HERE].com/qmc/tasks')                         // sets the server name as a variable
+    let qmc = lower('https://$(server).[YOUR-DOMAIN-HERE].com/qmc/tasks') ;                        // sets the server name as a variable
 
     Sub CurrentTasks
         //this sub uses the monitoring API to go get all tasks that are on the task list and their current status, as well as some minor header details
