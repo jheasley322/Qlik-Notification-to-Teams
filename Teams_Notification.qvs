@@ -260,7 +260,9 @@ ELSE                                                                            
         LET Jpayload = Jpayload &'"sections": [';                                                    //****************part of CONFIG
         LET Jpayload = Jpayload &'{';                                                                //****************part of CONFIG
         LET Jpayload = Jpayload &'"title": "'& '$(CardSubTitle)' &'",';                              //sub title
-        LET Jpayload = Jpayload &'"text": "'&'<blockquote>'& '$(CardMessage)' &'</blockquote>'&'",'; //card message
+        LET Jpayload = Jpayload &'"text": "'&
+        '<blockquote cite=$(qmc)><p>$(CardMessage)</p><footer> <a href=$(qmc)>QMC Task Menu</a></footer></blockquote>'&'"'; 
+        //card message
         LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
         LET Jpayload = Jpayload &']';                                                                //****************part of CONFIG
         LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
