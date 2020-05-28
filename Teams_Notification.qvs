@@ -26,271 +26,277 @@ SET DayNames='Mon;Tue;Wed;Thu;Fri;Sat;Sun';
 SET LongDayNames='Monday;Tuesday;Wednesday;Thursday;Friday;Saturday;Sunday';
 SET NumericalAbbreviation='3:k;6:M;9:G;12:T;15:P;18:E;21:Z;24:Y;-3:m;-6:μ;-9:n;-12:p;-15:f;-18:a;-21:z;-24:y';
 
+Sub Execution
+    //time and date variables to determine if the app should do anything
+    Let iNow = hour(Now());
 
-//time and date variables to determine if the app should do anything
-Let iNow = hour(Now());
+    Let iDayStart =     6;                                                                      // set the minimum hour to send notices -1 (6 = start notifications at 7am)
+    Let iDayEnd =       21;                                                                     // set the maxmimum hour to send notices +1 (21 = stop notifications at 8pm)
+    let iDaytime =      if($(iNow)>$(iDayStart) AND $(iNow)<$(iDayEnd),1,0);                    // flags whether or not the time is "daytime" based on your start/stop hours
+    Let iWeekday =      if(Match(WeekDay(today()),'Sat','Sun'),0,1);  
+    Let iRuntime =      If($(iWeekday)=1 AND $(iDaytime)=1,'yes','no');                         // flags whether or not notifications should be sent based on IS DAYTIME AND IS WEEKDAY
+    // Let iRuntime = 'yes'; // uncomment to force the app to always run 
 
-Let iDayStart =     6;                                                                          // set the minimum hour to send notices -1 (6 = start notifications at 7am)
-Let iDayEnd =       21;                                                                         // set the maxmimum hour to send notices +1 (21 = stop notifications at 8pm)
-let iDaytime =      if($(iNow)>$(iDayStart) AND $(iNow)<$(iDayEnd),1,0);                        // flags whether or not the time is "daytime" based on your start/stop hours
-Let iWeekday =      if(Match(WeekDay(today()),'Sat','Sun'),0,1);  
-// Let iWeekday =      1;                             // flags whether or not the day is a weekday or weekend based on the execution time of the app
-Let iRuntime =      If($(iWeekday)=1 AND $(iDaytime)=1,'yes','no');                             // flags whether or not notifications should be sent based on IS DAYTIME AND IS WEEKDAY
-// Let iRuntime = 'yes'; use this as a manual 
-// override to always run, otherwise use above version
+    Trace Should Notifications be sent: $(iRuntime);                                            // writes notification decision to logfile
+    //end variables to determine if app should run
 
-Trace Should Notifications be sent: $(iRuntime);                                                // writes notification decision to logfile
-//end variables to determin if app should run
+    // sense environment variables
+    // use these to change the notification card properties, based on your deployment
+    Let iEnvironment = if(Wildmatch(Computername(),'*PRD*'),'PROD','STAGE');                    // detects which server cluster is sending notice
+    Let iColor = if('$(iEnvironment)'='PROD','F93F17','F8981D');                                // changes card color for different environments
 
-// sense environment variables
-// use these to change the notification card properties, based on your deployment
-Let iEnvironment = if(Wildmatch(Computername(),'*PRD*'),'PROD','STAGE');                        // detects which server cluster is sending notice
-Let iColor = if('$(iEnvironment)'='PROD','F93F17','F8981D');                                    // changes card color for different environments
+    IF '$(iRuntime)' = 'no' THEN
+        Exit Script;                                                                            // bail out of script if NOW is not during RUNTIME
 
-IF '$(iRuntime)' = 'no' THEN
-    Exit Script;                                                                                // bail out of script if NOW is not during RUNTIME
+    ELSE                                                                                        // if NOW is during RUNTIME, do the rest of the script after this point
 
-ELSE                                                                                            // if NOW is during RUNTIME, do the rest of the script after this point
-
-    Let pLib = 'your data connection name here';                                                                     // set the LIB connection name
+    Let pLib = 'your data connection name here';                                                // set the LIB connection name
                                                                                                 // below is the webhook address from teams
     Let WebhookAddress = 'your webhook address here';
     Let server = ComputerName(); 
     //update your doamin info here to make this function correctly   
-    let qmc = lower('https://$(server).[YOUR-DOMAIN-HERE].com/qmc/tasks') ;                        // sets the server name as a variable
+    let qmc = lower('https://$(server).[YOUR-DOMAIN-HERE].com/qmc/tasks') ;                     // sets the server name as a variable
 
-    Sub CurrentTasks
-        //this sub uses the monitoring API to go get all tasks that are on the task list and their current status, as well as some minor header details
-        LIB CONNECT TO 'monitor_apps_REST_task';
+    //==final call statements==
+        Call CurrentTasks;
+        Call Fails;
+        CALL Notification;
+    //=========================
 
-        RestConnectorMasterTable:
-        SQL SELECT 
-            "id" AS "id_u5",
-            "createdDate",
-            "modifiedDate",
-            "modifiedByUserName",
-            "isManuallyTriggered",
-            "name" AS "name_u2",
-            "taskType",
-            "enabled",
-            "taskSessionTimeout",
-            "maxRetries",
-            "privileges" AS "privileges_u5",
-            "schemaPath",
-            "__KEY_root",
+    END IF; 
+End Sub;
+
+
+Sub CurrentTasks
+    // this sub uses the monitoring API to go get all tasks that are on the task 
+    // list and their current status, as well as some minor header details
+    LIB CONNECT TO 'monitor_apps_REST_task';
+
+    RestConnectorMasterTable:
+    SQL SELECT 
+        "id" AS "id_u5",
+        "createdDate",
+        "modifiedDate",
+        "modifiedByUserName",
+        "isManuallyTriggered",
+        "name" AS "name_u2",
+        "taskType",
+        "enabled",
+        "taskSessionTimeout",
+        "maxRetries",
+        "privileges" AS "privileges_u5",
+        "schemaPath",
+        "__KEY_root",
+        (SELECT 
+            "@Value",
+            "__FK_customProperties"
+        FROM "customProperties" FK "__FK_customProperties" ArrayValueAlias "@Value"),
+        (SELECT 
+            "id" AS "id_u0",
+            "name" AS "name_u0",
+            "appId",
+            "publishTime",
+            "published",
+            "savedInProductVersion",
+            "migrationHash",
+            "availabilityStatus",
+            "privileges" AS "privileges_u0",
+            "stream",
+            "__KEY_app",
+            "__FK_app",
             (SELECT 
-                "@Value",
-                "__FK_customProperties"
-            FROM "customProperties" FK "__FK_customProperties" ArrayValueAlias "@Value"),
+                "id",
+                "name",
+                "privileges",
+                "__FK_stream"
+            FROM "stream" FK "__FK_stream")
+        FROM "app" PK "__KEY_app" FK "__FK_app"),
+        (SELECT 
+            "id" AS "id_u3",
+            "nextExecution",
+            "privileges" AS "privileges_u3",
+            "__KEY_operational",
+            "__FK_operational",
             (SELECT 
-                "id" AS "id_u0",
-                "name" AS "name_u0",
-                "appId",
-                "publishTime",
-                "published",
-                "savedInProductVersion",
-                "migrationHash",
-                "availabilityStatus",
-                "privileges" AS "privileges_u0",
-                "stream",
-                "__KEY_app",
-                "__FK_app",
+                "id" AS "id_u2",
+                "executingNodeName",
+                "status",
+                "startTime",
+                "stopTime",
+                "duration",
+                "fileReferenceID",
+                "scriptLogAvailable",
+                "privileges" AS "privileges_u2",
+                "__KEY_lastExecutionResult",
+                "__FK_lastExecutionResult",
                 (SELECT 
-                    "id",
-                    "name",
-                    "privileges",
-                    "__FK_stream"
-                FROM "stream" FK "__FK_stream")
-            FROM "app" PK "__KEY_app" FK "__FK_app"),
-            (SELECT 
-                "id" AS "id_u3",
-                "nextExecution",
-                "privileges" AS "privileges_u3",
-                "__KEY_operational",
-                "__FK_operational",
-                (SELECT 
-                    "id" AS "id_u2",
-                    "executingNodeName",
-                    "status",
-                    "startTime",
-                    "stopTime",
-                    "duration",
-                    "fileReferenceID",
-                    "scriptLogAvailable",
-                    "privileges" AS "privileges_u2",
-                    "__KEY_lastExecutionResult",
-                    "__FK_lastExecutionResult",
-                    (SELECT 
-                        "id" AS "id_u1",
-                        "detailsType",
-                        "message",
-                        "detailCreatedDate",
-                        "privileges" AS "privileges_u1",
-                        "__FK_details"
-                    FROM "details" FK "__FK_details")
-                FROM "lastExecutionResult" PK "__KEY_lastExecutionResult" FK "__FK_lastExecutionResult")
-            FROM "operational" PK "__KEY_operational" FK "__FK_operational"),
-            (SELECT 
-                "@Value" AS "@Value_u0",
-                "__FK_tags"
-            FROM "tags" FK "__FK_tags" ArrayValueAlias "@Value_u0"),
-            (SELECT 
-                "id" AS "id_u4",
-                "name" AS "name_u1",
-                "type",
-                "privileges" AS "privileges_u4",
-                "__FK_userDirectory"
-            FROM "userDirectory" FK "__FK_userDirectory")
-        FROM JSON (wrap on) "root" PK "__KEY_root";
+                    "id" AS "id_u1",
+                    "detailsType",
+                    "message",
+                    "detailCreatedDate",
+                    "privileges" AS "privileges_u1",
+                    "__FK_details"
+                FROM "details" FK "__FK_details")
+            FROM "lastExecutionResult" PK "__KEY_lastExecutionResult" FK "__FK_lastExecutionResult")
+        FROM "operational" PK "__KEY_operational" FK "__FK_operational"),
+        (SELECT 
+            "@Value" AS "@Value_u0",
+            "__FK_tags"
+        FROM "tags" FK "__FK_tags" ArrayValueAlias "@Value_u0"),
+        (SELECT 
+            "id" AS "id_u4",
+            "name" AS "name_u1",
+            "type",
+            "privileges" AS "privileges_u4",
+            "__FK_userDirectory"
+        FROM "userDirectory" FK "__FK_userDirectory")
+    FROM JSON (wrap on) "root" PK "__KEY_root";
 
-        [root]:
-        LOAD    [id_u5] AS [id_u5],
-            [name_u2] AS [Task Name],
-            [enabled] AS [enabled],
-            [__KEY_root] AS [__KEY_root]
-        RESIDENT RestConnectorMasterTable
-        WHERE NOT IsNull([__KEY_root])
-        ;
+    [root]:
+    LOAD    [id_u5] AS [id_u5],
+        [name_u2] AS [Task Name],
+        [enabled] AS [enabled],
+        [__KEY_root] AS [__KEY_root]
+    RESIDENT RestConnectorMasterTable
+    WHERE NOT IsNull([__KEY_root])
+    ;
 
-        Left Join (root)
-        LOAD    
-            [__FK_app] AS [__KEY_root],
-            [name_u0] AS [App Name],
-            [__KEY_app] AS [__KEY_app]
+    Left Join (root)
+    LOAD    
+        [__FK_app] AS [__KEY_root],
+        [name_u0] AS [App Name],
+        [__KEY_app] AS [__KEY_app]
 
-        RESIDENT RestConnectorMasterTable
-        // WHERE NOT IsNull([__FK_app])
-        ;
+    RESIDENT RestConnectorMasterTable
+    // WHERE NOT IsNull([__FK_app])
+    ;
 
-        Left Join (root)
-        LOAD    
-            [__FK_operational] AS [__KEY_root],
-            [__KEY_operational] AS [__KEY_operational]  
-        RESIDENT RestConnectorMasterTable
-        WHERE NOT IsNull([__FK_operational]);
+    Left Join (root)
+    LOAD    
+        [__FK_operational] AS [__KEY_root],
+        [__KEY_operational] AS [__KEY_operational]  
+    RESIDENT RestConnectorMasterTable
+    WHERE NOT IsNull([__FK_operational]);
 
-        left join (root)
-        LOAD
-            [__FK_lastExecutionResult] AS [__KEY_operational],
-            [executingNodeName] AS [executingNodeName],
-            [status] AS [status],
-            if (match(status,8),'FinishedFail',
-                if (match(status,10),'Retry',
-                if(match(status,11),'Error',
-                if (match(status,12),'Reset'
-                ))))    AS StatusName,
-            [startTime] AS [startTime],
-            [stopTime] AS [stopTime],
-            Date(ConvertToLocalTime([stopTime],'Eastern Time (US & Canada)')) as SDate,
-            time(ConvertToLocalTime([stopTime],'Eastern Time (US & Canada)')) as STime,  
-            [duration] AS [duration],
-            [__KEY_lastExecutionResult] AS [__KEY_lastExecutionResult]  
-        RESIDENT RestConnectorMasterTable
-        WHERE NOT IsNull([__FK_lastExecutionResult]);
+    left join (root)
+    LOAD
+        [__FK_lastExecutionResult] AS [__KEY_operational],
+        [executingNodeName] AS [executingNodeName],
+        [status] AS [status],
+        if (match(status,8),'FinishedFail',
+            if (match(status,10),'Retry',
+            if(match(status,11),'Error',
+            if (match(status,12),'Reset'
+            ))))    AS StatusName,
+        [startTime] AS [startTime],
+        [stopTime] AS [stopTime],
+        Date(ConvertToLocalTime([stopTime],'Eastern Time (US & Canada)')) as SDate,
+        time(ConvertToLocalTime([stopTime],'Eastern Time (US & Canada)')) as STime,  
+        [duration] AS [duration],
+        [__KEY_lastExecutionResult] AS [__KEY_lastExecutionResult]  
+    RESIDENT RestConnectorMasterTable
+    WHERE NOT IsNull([__FK_lastExecutionResult]);
 
-        Rename Table root to TaskList;
+    Rename Table root to TaskList;
 
-        DROP TABLE RestConnectorMasterTable;
-    End Sub;
+    DROP TABLE RestConnectorMasterTable;
+End Sub;
         
-    
-    Sub Fails
-        // this sub does a resident load from the TaskList table, only when the status is in 8,10,11,12(not successful, not running, not retrying)
-        SET TableName = 'Tasks';
-        TRACE ========== Loading $(TableName) ==========;
-        $(TableName):
-        NoConcatenate
-        LOAD * Resident TaskList
-            where match(status,8,10,11,12);
 
-        List:
-        Load
-            Concat(
-                [Task Name] & ': '& 
-                StatusName & ' - ' &
-                Date(SDate,'M/D/YY') &' '&
-                Time(STime,'h:mmtt'),
-                    ' <br> ') as list
-        Resident Tasks Group by 1;
+Sub Fails
+    // this sub does a resident load from the TaskList table, only when the status is in 8,10,11,12(not successful, not running, not retrying)
+    SET TableName = 'Tasks';
+    TRACE ========== Loading $(TableName) ==========;
+    $(TableName):
+    NoConcatenate
+    LOAD * Resident TaskList
+        where match(status,8,10,11,12);
 
-        Let vAllFails = peek('list');
-        Trace Fail list is: $(vAllFails);
+    List:
+    Load
+        Concat(
+            [Task Name] & ': '& 
+            StatusName & ' - ' &
+            Date(SDate,'M/D/YY') &' '&
+            Time(STime,'h:mmtt'),
+                ' <br> ') as list
+    Resident Tasks Group by 1;
 
-        Drop Table TaskList;
-        // drops the original TaskList and keeps only the failed tasks
-    End Sub;
+    Let vAllFails = peek('list');
+    Trace Fail list is: $(vAllFails);
+
+    Drop Table TaskList;
+    // drops the original TaskList and keeps only the failed tasks
+End Sub;
     
 
-    SUB Notification
-        //this sub composes the notification cards that are sent to teams
-        LET vFailCount   = NOOFROWS('Tasks');                                                       // sets the number of failures detected
-        LET CardTitle = 'Failed Task Alert';                                                        // sets the main title of the card
+SUB Notification
+    //this sub composes the notification cards that are sent to teams
+    LET vFailCount   = NOOFROWS('Tasks');                                                        // sets the number of failures detected
+    LET CardTitle = 'Failed Task Alert';                                                         // sets the main title of the card
 
-        Trace Fail Count is $(vFailCount);                                                          // writes out the fail count in the log
-            
-        IF  $(vFailCount) > 0 THEN                                                                  // if there are more than 0 failures, set the main card details as this
-            LET CardMessage = 'There are ' & $(vFailCount) 
-                &' tasks currently in a failed status ('& NOW()&')'&
-                '<br>'&' List of Failed Tasks: <br>'& '$(vAllFails)'
-                & '<br>' & '<br>' & '$(qmc)';                                                       // card message
-            LET CardColor = '$(iColor)';                                                            // card color
-            LET CardSubTitle          = 'Task Failure Alert';                                       // sub title
-        //-------------------------------------------------------------------------this block is not currently in use-----------------------------------
-        //the next few lines were for a deprecated feature where you ALWAYS get a notice, instead of failures only                                                    
-        ELSE                                                                                        // if there are less than 1 failures, set the main card details as this
-            LET CardMessage = 'There are currently no task failures';                               // card message
-            LET CardColor = '$(iColor)';                                                            // card color
-            LET CardSubTitle = 'No Failures';                                                       // sub title
-        //----------------------------------------------------------------------------------------------------------------------------------------------    
-        END IF;
+    Trace Fail Count is $(vFailCount);                                                           // writes out the fail count in the log
         
-        IF $(vFailCount) > 0 THEN                                                                   // if there are more than 0 failures, do the next block of script
-        // this section sets a variable and continually loops through a text concatenation 
-        // to make a valid JSON response payload to insert into a later command
-        //===================================================================================================================================================================
-        //----->>  ----->>  ----->>  ----->>  ----->>  ----->>  ----->>  ----->>                   do not change anything that is CONFIG
+    IF  $(vFailCount) > 0 THEN                                                                   // if there are more than 0 failures, set the main card details as this
+        LET CardMessage = 'There are ' & $(vFailCount) 
+            &' tasks currently in a failed status ('& NOW()&')'&
+            '<br>'&' List of Failed Tasks: <br>'& '$(vAllFails)'
+            & '<br>' & '<br>' & '$(qmc)';                                                        // card message
+        LET CardColor = '$(iColor)';                                                             // card color
+        LET CardSubTitle          = 'Task Failure Alert';                                        // sub title
+    //-------------------------------------------------------------------------this block is not currently in use-----------------------------------
+    //the next few lines were for a deprecated feature where you ALWAYS get a notice, instead of failures only                                                    
+    ELSE                                                                                         // if there are less than 1 failures, set the main card details as this
+        LET CardMessage = 'There are currently no task failures';                                // card message
+        LET CardColor = '$(iColor)';                                                             // card color
+        LET CardSubTitle = 'No Failures';                                                        // sub title
+    //----------------------------------------------------------------------------------------------------------------------------------------------    
+    END IF;
+    
+    IF $(vFailCount) > 0 THEN                                                                    // if there are more than 0 failures, do the next block of script
+    // this section sets a variable and continually loops through a text concatenation 
+    // to make a valid JSON response payload to insert into a later command
+    //===================================================================================================================================================================
+    //----->>  ----->>  ----->>  ----->>  ----->>  ----->>  ----->>  ----->>                     do not change anything that is CONFIG
+    
+    LET Jpayload ='{';                                                                           //****************part of CONFIG
+    LET Jpayload = Jpayload &'"@type": "MessageCard",';                                          //****************type of alert (CONFIG)
+    LET Jpayload = Jpayload &'"@context": "http://schema.org/extensions",';                      //****************schema to use (CONFIG)
+    LET Jpayload = Jpayload &'"summary": "Qlik Alert",';                                         //alert summary
+    LET Jpayload = Jpayload &'"title": "'& '$(CardTitle)' &'",';                                 //main title
+    LET Jpayload = Jpayload &'"text": "Alert Message from $(server)",';                          //server identification
+    LET Jpayload = Jpayload &'"themeColor": "'& '$(CardColor)' &'",';                            //color
+    LET Jpayload = Jpayload &'"sections": [';                                                    //****************part of CONFIG
+    LET Jpayload = Jpayload &'{';                                                                //****************part of CONFIG
+    LET Jpayload = Jpayload &'"title": "'& '$(CardSubTitle)' &'",';                              //sub title
+    LET Jpayload = Jpayload &'"text": "'&
+    '<blockquote cite=$(qmc)><p>$(CardMessage)</p><footer> 
+        <a href=$(qmc)>QMC Task Menu</a></footer></blockquote>'&'"';                             //card message
+    LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
+    LET Jpayload = Jpayload &']';                                                                //****************part of CONFIG
+    LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
+
+    //====================================================================================================================================================================
+    LET Jpayload = REPLACE(Jpayload,'"', CHR(34)&CHR(34));                                      //text replace to finalize formatting
+
+    LIB CONNECT TO '$(pLib)';                                                                   //connect to the library connection
+    
+    //this makes a generic call to the webhook
+    RestConnectorMasterTable:
+    SQL SELECT 
+        "Content-Type",
+        "Date",
+        "__KEY__response_header"
+    FROM JSON "_response_header" PK "__KEY__response_header"
+        WITH CONNECTION (                                                                       // this sends the payload back through the REST connection
+            URL "$(WebhookAddress)",  
+            HTTPHEADER "Content-Type" "application/json",
+            BODY "$(Jpayload)" ) 
+    ;
+    Drop Table Tasks;                                                                           // get rid of task table
+    END IF;                                                                                     // finishes payload composition, no ELSE to handle when there are 0 failures
         
-        LET Jpayload ='{';                                                                           //****************part of CONFIG
-        LET Jpayload = Jpayload &'"@type": "MessageCard",';                                          //****************type of alert (CONFIG)
-        LET Jpayload = Jpayload &'"@context": "http://schema.org/extensions",';                      //****************schema to use (CONFIG)
-        LET Jpayload = Jpayload &'"summary": "Qlik Alert",';                                         //alert summary
-        LET Jpayload = Jpayload &'"title": "'& '$(CardTitle)' &'",';                                 //main title
-        LET Jpayload = Jpayload &'"text": "Alert Message from $(server)",';                          //server identification
-        LET Jpayload = Jpayload &'"themeColor": "'& '$(CardColor)' &'",';                            //color
-        LET Jpayload = Jpayload &'"sections": [';                                                    //****************part of CONFIG
-        LET Jpayload = Jpayload &'{';                                                                //****************part of CONFIG
-        LET Jpayload = Jpayload &'"title": "'& '$(CardSubTitle)' &'",';                              //sub title
-        LET Jpayload = Jpayload &'"text": "'&
-        '<blockquote cite=$(qmc)><p>$(CardMessage)</p><footer> <a href=$(qmc)>QMC Task Menu</a></footer></blockquote>'&'"'; 
-        //card message
-        LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
-        LET Jpayload = Jpayload &']';                                                                //****************part of CONFIG
-        LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
+END SUB;
 
-        //====================================================================================================================================================================
-        LET Jpayload = REPLACE(Jpayload,'"', CHR(34)&CHR(34));                                      //text replace to finalize formatting
 
-        LIB CONNECT TO '$(pLib)';                                                                   //connect to the library connection
-        
-        //this makes a generic call to the webhook
-        RestConnectorMasterTable:
-        SQL SELECT 
-            "Content-Type",
-            "Date",
-            "__KEY__response_header"
-        FROM JSON "_response_header" PK "__KEY__response_header"
-            WITH CONNECTION (                                                                       // this sends the payload back through the REST connection
-                URL "$(WebhookAddress)",  
-                HTTPHEADER "Content-Type" "application/json",
-                BODY "$(Jpayload)" ) 
-        ;
-        Drop Table Tasks;                                                                           // get rid of task table
-        END IF;                                                                                     // finishes payload composition, no ELSE to handle when there are 0 failures
-            
-    END SUB;
-
-    Call CurrentTasks;
-    Call Fails;
-    CALL Notification;
-
-END IF; 
+Call Execution;
