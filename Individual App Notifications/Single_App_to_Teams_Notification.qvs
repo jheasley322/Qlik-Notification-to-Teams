@@ -1,0 +1,66 @@
+
+//==========================================|
+//     Reload Done Notification Script      |
+// --send notification via webhook when-----| 
+// -- a specific app has reloaded   --------|
+//==========================================|
+
+
+SUB Notification
+    Let pLib = 'JSON POST';                                                                     // set the LIB connection name
+                                                                                                // below is the webhook address from teams
+    Let WebhookAddress = '[your TEAMS webhook address here]';
+    Let server = ComputerName();
+    let qmc = lower('https://$(server).[your domain here]/qmc/tasks');                 // sets the server name as a variable
+    let time_now = timestamp(now(),'MM/DD/YYYY h:mm tt');
+    let app_name = DocumentTitle();
+    
+    LET CardTitle = 'Application Reload Notification';                                          // sets the main title of the card
+    LET CardMessage = 'the reload of <b>[$(app_name)]</b>  has finished  ('& '$(time_now)'&')'			// card message
+                        & '<br>' 																// card message
+                        & '<br>' 																// card message
+                        & '$(qmc)';                                           					// card message
+    LET CardColor = '#008000';                                                                  // card color
+    LET CardSubTitle = 'App Reload Notice';                                                     // sub title
+
+    //=====================================================================================================================================
+    //----->>  ----->>  ----->>  ----->>  ----->>  ----->>  ----->>  ----->>                     do not change anything that is CONFIG
+    
+    LET Jpayload ='{';                                                                           //****************part of CONFIG
+    LET Jpayload = Jpayload &'"@type": "MessageCard",';                                          //****************type of alert (CONFIG)
+    LET Jpayload = Jpayload &'"@context": "http://schema.org/extensions",';                      //****************schema to use (CONFIG)
+    LET Jpayload = Jpayload &'"summary": "Qlik Alert",';                                         //alert summary
+    LET Jpayload = Jpayload &'"title": "'& '$(CardTitle)' &'",';                                 //main title
+    LET Jpayload = Jpayload &'"text": "App Reload from $(server)",';                             //server identification
+    LET Jpayload = Jpayload &'"themeColor": "'& '$(CardColor)' &'",';                            //color
+    LET Jpayload = Jpayload &'"sections": [';                                                    //****************part of CONFIG
+    LET Jpayload = Jpayload &'{';                                                                //****************part of CONFIG
+    LET Jpayload = Jpayload &'"title": "'& '$(CardSubTitle)' &'",';                              //sub title
+    LET Jpayload = Jpayload &'"text": "'&
+    '<blockquote cite=$(qmc)><p>$(CardMessage)</p><footer> <a href=$(qmc)>QMC Task Menu</a></footer></blockquote>'&'"'; 
+
+    //card message
+    LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
+    LET Jpayload = Jpayload &']';                                                                //****************part of CONFIG
+    LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
+
+    //=====================================================================================================================================
+    LET Jpayload = REPLACE(Jpayload,'"', CHR(34)&CHR(34));                                      //text replace to finalize formatting
+
+    LIB CONNECT TO '$(pLib)';                                                                   //connect to the library connection
+    
+    //this makes a generic call to the webhook
+    RestConnectorMasterTable:
+    SQL SELECT 
+        "Content-Type",
+        "Date",
+        "__KEY__response_header"
+    FROM JSON "_response_header" PK "__KEY__response_header"
+        WITH CONNECTION (                                                                       // this sends the payload back through the REST connection
+            URL "$(WebhookAddress)",  
+            HTTPHEADER "Content-Type" "application/json",
+            BODY "$(Jpayload)" ) 
+    ;
+                                                                                                    
+END SUB;
+CALL Notification;
