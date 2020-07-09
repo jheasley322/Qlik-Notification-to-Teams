@@ -11,38 +11,59 @@ SUB Notification
                                                                                                 // below is the webhook address from teams
     Let WebhookAddress = '[your TEAMS webhook address here]';
     Let server = ComputerName();
-    let qmc = lower('https://$(server).[your domain here]/qmc/tasks');                 // sets the server name as a variable
+    let qmc = lower('https://$(server).[your domain here]/qmc/tasks'); 
+    let app_id = DocumentName();
+    let app_link = 'https://$(server).[your domain here]/sense/app/$(app_id)/overview';                // sets the server name as a variable
     let time_now = timestamp(now(),'MM/DD/YYYY h:mm tt');
     let app_name = DocumentTitle();
     
-    LET CardTitle = 'Application Reload Notification';                                          // sets the main title of the card
-    LET CardMessage = 'the reload of <b>[$(app_name)]</b>  has finished  ('& '$(time_now)'&')'			// card message
-                        & '<br>' 																// card message
-                        & '<br>' 																// card message
-                        & '$(qmc)';                                           					// card message
+    LET CardTitle = 'Application Reload Notification';                                          // sets the main title of the card                                        					// card message
     LET CardColor = '#008000';                                                                  // card color
     LET CardSubTitle = 'App Reload Notice';                                                     // sub title
 
     //=====================================================================================================================================
     //----->>  ----->>  ----->>  ----->>  ----->>  ----->>  ----->>  ----->>                     do not change anything that is CONFIG
     
-    LET Jpayload ='{';                                                                           //****************part of CONFIG
-    LET Jpayload = Jpayload &'"@type": "MessageCard",';                                          //****************type of alert (CONFIG)
-    LET Jpayload = Jpayload &'"@context": "http://schema.org/extensions",';                      //****************schema to use (CONFIG)
-    LET Jpayload = Jpayload &'"summary": "Qlik Alert",';                                         //alert summary
-    LET Jpayload = Jpayload &'"title": "'& '$(CardTitle)' &'",';                                 //main title
-    LET Jpayload = Jpayload &'"text": "App Reload from $(server)",';                             //server identification
-    LET Jpayload = Jpayload &'"themeColor": "'& '$(CardColor)' &'",';                            //color
-    LET Jpayload = Jpayload &'"sections": [';                                                    //****************part of CONFIG
-    LET Jpayload = Jpayload &'{';                                                                //****************part of CONFIG
-    LET Jpayload = Jpayload &'"title": "'& '$(CardSubTitle)' &'",';                              //sub title
-    LET Jpayload = Jpayload &'"text": "'&
-    '<blockquote cite=$(qmc)><p>$(CardMessage)</p><footer> <a href=$(qmc)>QMC Task Menu</a></footer></blockquote>'&'"'; 
+        LET Jpayload ='{
+                        "@type": "MessageCard",
+                        "@context": "http://schema.org/extensions",
+                        "summary": "Qlik Alert",
+                        "themeColor": "#008000",
+                        "title": "Application Reload Notification",
 
-    //card message
-    LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
-    LET Jpayload = Jpayload &']';                                                                //****************part of CONFIG
-    LET Jpayload = Jpayload &'}';                                                                //****************part of CONFIG
+                        "sections": [
+                          {
+                            "activityTitle": "$(fullserver)",
+                            "activitySubtitle": "$(time_now)",
+                            "activityImage": "https://i.pinimg.com/564x/73/20/de/7320de297c2a05563af18fc8b2d2ff97.jpg",
+                            "text": "the reload of <b>[$(app_name)]</b> has finished"
+                          }
+                        ],
+                        "potentialAction": [
+                            {
+                                "@type": "OpenUri",
+                                "name": "Open QMC Tasks",
+                                "targets": [
+                                    {
+                                        "os": "default",
+                                        "uri": "$(qmc)"
+                                    }
+                                ]
+                            },
+                            {
+                                "@type": "OpenUri",
+                                "name": "Open App - $(app_name)",
+                                "targets": [
+                                    {
+                                        "os": "default",
+                                        "uri": "$(app_link)"
+                                    }
+                                ]
+                            }    
+                          ]
+                        }'
+						;
+                                                             
 
     //=====================================================================================================================================
     LET Jpayload = REPLACE(Jpayload,'"', CHR(34)&CHR(34));                                      //text replace to finalize formatting
